@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.pth
+ImageandvideoI3D/ASL20/
+ImageandvideoI3D/ASL20_frames/
+ImageandvideoI3D/MSASL/
+search_results/
+*.csv
