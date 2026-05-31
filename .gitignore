@@ -4,6 +4,6 @@ __pycache__/
 *.pth
 ImageandvideoI3D/ASL20/
 ImageandvideoI3D/ASL20_frames/
-ImageandvideoI3D/MSASL/
+ImageandvideoI3D/MSASL/*.json.gz
 search_results/
 *.csv
