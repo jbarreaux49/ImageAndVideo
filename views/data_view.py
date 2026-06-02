@@ -49,6 +49,22 @@ class DataView(tk.Frame):
         self.ext_output_dir.pack(anchor="w", **pad)
         self.ext_num_classes.pack(anchor="w", **pad)
 
+        # cookies.txt file (Netscape format — export with "Get cookies.txt LOCALLY" extension)
+        self.ext_cookies_file = FieldRow(parent, "cookies.txt:", "", browse="file", bg=bg)
+        self.ext_cookies_file.pack(anchor="w", **pad)
+
+        # Fallback: read cookies directly from a browser (may fail if browser is open)
+        cookie_row = tk.Frame(parent, bg=bg)
+        cookie_row.pack(anchor="w", **pad)
+        label(cookie_row, "Or browser:", bg=bg, size=9).pack(side="left", padx=(0, 6))
+        self.ext_cookies_browser = tk.StringVar(value="none")
+        ttk.Combobox(
+            cookie_row,
+            textvariable=self.ext_cookies_browser,
+            values=["none", "chrome", "firefox", "edge", "brave", "opera", "chromium"],
+            state="readonly", width=12,
+        ).pack(side="left")
+
         separator(parent, bg=C_BORDER).pack(fill="x", padx=14, pady=10)
 
         row = tk.Frame(parent, bg=bg)

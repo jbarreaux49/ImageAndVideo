@@ -7,6 +7,7 @@ from typing import List
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
+from torchvision.transforms import functional as TF
 from torchvision.io import read_image
 
 from utils.config import MAX_FRAMES, MEAN, STD
@@ -28,8 +29,9 @@ class SignDataset(Dataset):
 
     _AUG_DIRS = ("original", "flipped", "brightened", "contrasted")
 
-    def __init__(self, index_file: str, max_frames: int = MAX_FRAMES):
+    def __init__(self, index_file: str, max_frames: int = MAX_FRAMES, training: bool = True):
         self.max_frames = max_frames
+        self.training   = training
         self.samples: List[SignSample] = self._parse_index(index_file)
         self._transform = transforms.Compose([
             transforms.ConvertImageDtype(torch.float32),
@@ -61,24 +63,40 @@ class SignDataset(Dataset):
         if not files:
             return torch.zeros(3, self.max_frames, 224, 224)
 
-        frames = []
+        raw: List[torch.Tensor] = []
         for fname in files:
             img = read_image(os.path.join(aug_subdir, fname))
             if img.shape[0] == 1:
                 img = img.repeat(3, 1, 1)
-            frames.append(self._transform(img))
+            raw.append(img)
+
+        t = len(raw)
+
+        # ── temporal sampling: random consecutive window (paper §4) ───────────
+        if t >= self.max_frames:
+            start = random.randint(0, t - self.max_frames) if self.training else 0
+            raw = raw[start: start + self.max_frames]
+        else:
+            # Repeat last frame to reach max_frames (paper §4, not zero-padding)
+            raw = raw + [raw[-1]] * (self.max_frames - t)
+
+        # ── spatial jitter: ±10% scale/translation, consistent per clip ───────
+        # Applied only during training (paper §4)
+        if self.training:
+            h, w = raw[0].shape[1], raw[0].shape[2]
+            tx = random.uniform(-0.1, 0.1) * w
+            ty = random.uniform(-0.1, 0.1) * h
+            scale = random.uniform(0.9, 1.1)
+            raw = [
+                TF.affine(img, angle=0.0, translate=[tx, ty], scale=scale, shear=0.0,
+                          interpolation=TF.InterpolationMode.BILINEAR)
+                for img in raw
+            ]
+
+        frames = [self._transform(img) for img in raw]
 
         # stack → (T, C, H, W) then permute → (C, T, H, W)
-        tensor = torch.stack(frames).permute(1, 0, 2, 3)
-
-        t = tensor.shape[1]
-        if t < self.max_frames:
-            pad = torch.zeros(3, self.max_frames - t, *tensor.shape[2:])
-            tensor = torch.cat([tensor, pad], dim=1)
-        else:
-            tensor = tensor[:, :self.max_frames]
-
-        return tensor
+        return torch.stack(frames).permute(1, 0, 2, 3)
 
     # ── Dataset protocol ──────────────────────────────────────────────────────
 

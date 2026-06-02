@@ -23,9 +23,13 @@ class DataController:
     # ── Extraction ────────────────────────────────────────────────────────────
 
     def _start_extraction(self):
+        browser      = self.view.ext_cookies_browser.get()
+        cookies_file = self.view.ext_cookies_file.get().strip()
         self._ext_mgr = ExtractionManager(
             output_dir=self.view.ext_output_dir.get(),
             num_classes=self.view.ext_num_classes.get(),
+            cookies_file=cookies_file if cookies_file else None,
+            cookies_browser=None if browser == "none" else browser,
             progress_callback=lambda v, msg: self._ext_q.put(("progress", v, msg)),
         )
         self.view.update_ext_progress(0, "Starting…")

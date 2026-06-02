@@ -12,7 +12,7 @@ from models.sign_dataset import SignDataset
 from models.sign_model import SignModel
 from utils.config import (
     BATCH_SIZE, DROPOUT_RATE, EARLY_STOPPING_PATIENCE,
-    LEARNING_RATE, MAX_FRAMES, NUM_CLASSES, NUM_EPOCHS,
+    LEARNING_RATE, LR_DECAY_EPOCH, MAX_FRAMES, NUM_CLASSES, NUM_EPOCHS,
 )
 from utils.logger import get_logger
 
@@ -69,10 +69,11 @@ class TrainingManager:
         steps_per_epoch:   int   = 0,           # 0 = use all batches
         learning_rate:     float = LEARNING_RATE,
         dropout_rate:      float = DROPOUT_RATE,
-        optimizer_name:    str   = "Adam",
+        optimizer_name:    str   = "SGD",
         loss_fn_name:      str   = "CrossEntropy (weighted)",
         regularization:    str   = "L2",
         reg_strength:      float = 1e-4,
+        lr_decay_epoch:    int   = LR_DECAY_EPOCH,
         log_callback:      Optional[Callable[[str], None]]         = None,
         progress_callback: Optional[Callable[[float, str], None]]  = None,
         epoch_callback:    Optional[Callable[[List[Dict]], None]]   = None,
@@ -90,6 +91,7 @@ class TrainingManager:
         self.loss_fn_name     = loss_fn_name
         self.regularization   = regularization
         self.reg_strength     = reg_strength
+        self.lr_decay_epoch   = lr_decay_epoch
         self.log_callback     = log_callback
         self.progress_callback = progress_callback
         self.epoch_callback   = epoch_callback
@@ -146,9 +148,9 @@ class TrainingManager:
         val_idx   = self._build_index("val")
         test_idx  = self._build_index("test")
 
-        train_ds = SignDataset(train_idx, self.max_frames)
-        val_ds   = SignDataset(val_idx,   self.max_frames)
-        test_ds  = SignDataset(test_idx,  self.max_frames)
+        train_ds = SignDataset(train_idx, self.max_frames, training=True)
+        val_ds   = SignDataset(val_idx,   self.max_frames, training=False)
+        test_ds  = SignDataset(test_idx,  self.max_frames, training=False)
 
         self._log(
             f"Samples — train: {len(train_ds)}, val: {len(val_ds)}, test: {len(test_ds)}"
@@ -273,10 +275,15 @@ class TrainingManager:
 
         print(f"[train pid={os.getpid()}] loading R3D-18 weights (may take ~30s)...", flush=True)
         self.model = SignModel(self.num_classes, self.dropout_rate).to(self.device)
+        if self.device.type == "cuda":
+            torch.cuda.synchronize()   # wait for model weights to land on GPU
         print(f"[train pid={os.getpid()}] model ready.", flush=True)
 
         criterion = self._build_loss(train_loader.dataset.samples)
         optimizer = self._build_optimizer()
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=[self.lr_decay_epoch], gamma=0.1
+        )
         scaler    = torch.amp.GradScaler("cuda", enabled=self.device.type == "cuda")
         stopper   = EarlyStopping()
 
@@ -290,7 +297,9 @@ class TrainingManager:
                 break
 
             train_loss, train_acc = self._train_epoch(train_loader, criterion, optimizer, epoch, scaler)
+            print(f"  [ep{epoch}/{self.num_epochs}] running validation...", flush=True)
             val_loss, val_acc     = self._eval_epoch(val_loader, criterion)
+            scheduler.step()
 
             record = dict(
                 epoch=epoch,

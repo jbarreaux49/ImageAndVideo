@@ -27,8 +27,9 @@ ERROR_LOG_PATH = os.path.join(DATA_DIR, "error_log.txt")
 NUM_CLASSES              = 100
 BATCH_SIZE               = 4
 MAX_FRAMES               = 64
-NUM_EPOCHS               = 20
-LEARNING_RATE            = 5e-5
+NUM_EPOCHS               = 40
+LEARNING_RATE            = 1e-2
+LR_DECAY_EPOCH           = 20    # reduce LR by 10x at this epoch (paper §4)
 DROPOUT_RATE             = 0.5
 EARLY_STOPPING_PATIENCE  = 5
 

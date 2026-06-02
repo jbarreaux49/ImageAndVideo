@@ -1,4 +1,5 @@
 """Extracts uniformly-sampled frames from video clips and saves augmented copies."""
+import json
 import os
 import random
 from typing import Callable, List, Optional, Tuple
@@ -77,6 +78,22 @@ class PreparationManager:
         return frame[y: y + crop_h, x: x + crop_w]
 
     @staticmethod
+    def _crop_to_box(frame: np.ndarray, box: list, target_h: int, target_w: int) -> np.ndarray:
+        """Crop to signer's bounding box [y0, x0, y1, x1] (normalized) then resize."""
+        h, w = frame.shape[:2]
+        y0, x0, y1, x1 = box
+        py0 = max(0, int(y0 * h))
+        px0 = max(0, int(x0 * w))
+        py1 = min(h, int(y1 * h))
+        px1 = min(w, int(x1 * w))
+        if py1 <= py0 or px1 <= px0:
+            # Degenerate box — fall back to full frame
+            cropped = frame
+        else:
+            cropped = frame[py0:py1, px0:px1]
+        return cv2.resize(cropped, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+
+    @staticmethod
     def _augment(frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return (flipped, brightened, contrasted) augmentations."""
         flipped     = cv2.flip(frame, 1)
@@ -90,26 +107,37 @@ class PreparationManager:
 
     # ── per-video extraction ──────────────────────────────────────────────────
 
+    # Hard cap to avoid storing thousands of frames for unusual long clips.
+    # 200 >> average clip length (60 frames) so random temporal sampling in
+    # SignDataset always has meaningful range.
+    _MAX_EXTRACT = 200
+
     def _extract_video(self, video_path: str, out_dir: str):
+        # Read signer bounding box from sidecar JSON saved by ExtractionManager
+        sidecar = os.path.splitext(video_path)[0] + ".json"
+        box = None
+        if os.path.exists(sidecar):
+            with open(sidecar) as sf:
+                box = json.load(sf).get("box")
+
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             self._log(f"Cannot open: {video_path}")
             return
 
-        total   = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        indices = set(self._uniform_indices(total, self.max_frames))
-
+        # Extract every frame (no uniform subsampling) so SignDataset can do
+        # random consecutive temporal sampling at training time (paper §4).
         raw_frames: List[np.ndarray] = []
-        idx = 0
-        while True:
+        while len(raw_frames) < self._MAX_EXTRACT:
             ret, frame = cap.read()
             if not ret:
                 break
-            if idx in indices:
+            if box is not None:
+                frame = self._crop_to_box(frame, box, FRAME_SIZE[0], FRAME_SIZE[1])
+            else:
                 frame = self._resize_short_side(frame, SHORT_SIDE_SIZE)
                 frame = self._center_crop(frame, FRAME_SIZE[0], FRAME_SIZE[1])
-                raw_frames.append(frame)
-            idx += 1
+            raw_frames.append(frame)
         cap.release()
 
         if not raw_frames:
