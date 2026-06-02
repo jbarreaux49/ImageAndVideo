@@ -34,15 +34,20 @@ class _FocalLoss(nn.Module):
 
 
 class EarlyStopping:
-    """Triggers after `patience` epochs with no improvement in validation loss."""
+    """Triggers after `patience` epochs with no improvement in validation loss.
 
-    def __init__(self, patience: int = EARLY_STOPPING_PATIENCE):
+    `delta` sets the minimum improvement required to reset the patience counter,
+    preventing near-flat plateaus from being mistaken for real progress.
+    """
+
+    def __init__(self, patience: int = EARLY_STOPPING_PATIENCE, delta: float = 0.001):
         self.patience   = patience
+        self.delta      = delta
         self.best_loss  = float("inf")
         self.counter    = 0
 
     def __call__(self, val_loss: float) -> bool:
-        if val_loss < self.best_loss:
+        if val_loss < self.best_loss - self.delta:
             self.best_loss = val_loss
             self.counter   = 0
         else:

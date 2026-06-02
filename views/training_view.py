@@ -166,8 +166,8 @@ class TrainingView(tk.Frame):
 
         self.tr_num_classes    = SpinRow(parent, "Num classes:",     NUM_CLASSES,  1, 1000, bg=bg)
         self.tr_batch_size     = SpinRow(parent, "Batch size:",       BATCH_SIZE,   1, 64,   bg=bg)
-        self.tr_max_frames     = SpinRow(parent, "Max frames:",       16,           4, 128,  bg=bg)
-        self.tr_steps_epoch    = SpinRow(parent, "Steps/epoch:",      10,           0, 9999, bg=bg)
+        self.tr_max_frames     = SpinRow(parent, "Max frames:",       64,           4, 128,  bg=bg)
+        self.tr_steps_epoch    = SpinRow(parent, "Steps/epoch:",      0,            0, 9999, bg=bg)
         self.tr_num_epochs     = SpinRow(parent, "Epochs:",           NUM_EPOCHS,   1, 500,  bg=bg)
         self.tr_lr             = FloatRow(parent, "Learning rate:",   LEARNING_RATE, bg=bg)
         self.tr_dropout        = FloatRow(parent, "Dropout rate:",    DROPOUT_RATE,  bg=bg)
@@ -216,9 +216,9 @@ class TrainingView(tk.Frame):
         self.sr_frames_dir  = FieldRow(parent, "Frames dir:",   ASL_FRAMES_DIR,   browse="dir", bg=bg)
         self.sr_save_dir    = FieldRow(parent, "Results dir:",  "search_results", browse="dir", bg=bg)
         self.sr_num_classes = SpinRow(parent, "Num classes:",   NUM_CLASSES, 1, 1000, bg=bg)
-        self.sr_max_frames  = SpinRow(parent, "Max frames:",    16,          8, 128,  bg=bg)
+        self.sr_max_frames  = SpinRow(parent, "Max frames:",    64,          8, 128,  bg=bg)
         self.sr_epochs      = SpinRow(parent, "Epochs/trial:",  3,           1, 50,   bg=bg)
-        self.sr_steps_epoch = SpinRow(parent, "Steps/epoch:",   10,          0, 9999, bg=bg)
+        self.sr_steps_epoch = SpinRow(parent, "Steps/epoch:",   0,           0, 9999, bg=bg)
         self.sr_n_trials    = SpinRow(parent, "Max trials:",    6,           1, 100,  bg=bg)
         self.sr_optimizer      = ComboRow(parent, "Optimizer:",
                                           ["Adam", "AdamW", "SGD", "RMSprop"],
