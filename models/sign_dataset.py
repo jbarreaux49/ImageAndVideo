@@ -59,7 +59,10 @@ class SignDataset(Dataset):
         if not os.path.isdir(aug_subdir):
             aug_subdir = seq_dir
 
-        files = sorted(f for f in os.listdir(aug_subdir) if f.lower().endswith(".jpg"))
+        files = sorted(
+            f for f in os.listdir(aug_subdir)
+            if f.lower().endswith(".jpg") and os.path.getsize(os.path.join(aug_subdir, f)) > 0
+        )
         if not files:
             return torch.zeros(3, self.max_frames, 224, 224)
 

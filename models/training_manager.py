@@ -296,6 +296,8 @@ class TrainingManager:
             f"Device: {self.device} | classes: {self.num_classes} | epochs: {self.num_epochs}"
         )
 
+        best_val_loss = float("inf")
+
         for epoch in range(1, self.num_epochs + 1):
             if self._stop:
                 self._log("Training stopped by user.")
@@ -312,6 +314,11 @@ class TrainingManager:
                 val_loss=val_loss,     val_acc=val_acc,
             )
             self.history.append(record)
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                torch.save(self.model.state_dict(), self.model_save_path)
+                self._log(f"Best model saved (val loss={val_loss:.4f})")
 
             msg = (
                 f"Epoch {epoch}/{self.num_epochs}  "
@@ -333,8 +340,7 @@ class TrainingManager:
         test_loss, test_acc = self._eval_epoch(test_loader, criterion)
         self._log(f"Test — loss={test_loss:.4f}  acc={test_acc:.2%}")
 
-        torch.save(self.model.state_dict(), self.model_save_path)
-        self._log(f"Model saved → {self.model_save_path}")
+        self._log(f"Best model saved at {self.model_save_path}")
         self._save_history()
         self._progress(1.0, f"Done. Test accuracy: {test_acc:.2%}")
         return self.history
