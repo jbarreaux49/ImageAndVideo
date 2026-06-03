@@ -263,7 +263,7 @@ class TrainingManager:
             return torch.optim.SGD(p, lr=lr, momentum=0.9, weight_decay=wd)
         elif name == "RMSprop":
             return torch.optim.RMSprop(p, lr=lr, momentum=0.9, weight_decay=wd)
-        return torch.optim.Adam(p, lr=lr, weight_decay=wd)
+        return torch.optim.AdamW(p, lr=lr, weight_decay=wd)
 
     # ── public API ────────────────────────────────────────────────────────────
 
@@ -319,6 +319,8 @@ class TrainingManager:
                 best_val_loss = val_loss
                 torch.save(self.model.state_dict(), self.model_save_path)
                 self._log(f"Best model saved (val loss={val_loss:.4f})")
+
+            self._save_history()
 
             msg = (
                 f"Epoch {epoch}/{self.num_epochs}  "
