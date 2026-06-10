@@ -7,3 +7,4 @@ ImageandvideoI3D/ASL20_frames/
 ImageandvideoI3D/MSASL/*.json.gz
 search_results/
 *.csv
+.claude 
